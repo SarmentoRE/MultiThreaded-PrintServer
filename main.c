@@ -3,10 +3,13 @@
 #include <signal.h>
 #include <unistd.h>
 #include "printQueue.h"
-#include "main.h"
+
+#define queueSize = 15;
+int flag;
 
 int main(int argc, char* argv[])
 {
+    flag = 1;
     signal(SIGINT, signal_handler);
     if (argc < 3) {
         printf("Please enter threadCounts\n");
@@ -18,7 +21,7 @@ int main(int argc, char* argv[])
     printf("num producers:\t%i\n", producerThreads);
     printf("num consumers:\t%i\n", consumerThreads);
 
-    while (1) {
+    while (flag) {
         sleep(1);
     }
 
@@ -35,10 +38,10 @@ int printThreadFunc()
     return 1;
 }
 
-int signal_handler(int signo)
+void signal_handler(int signo)
 {
-    printf if (signo == SIGINT)
-    {
-        printf("gracefully terminating");
+    if (signo == SIGINT) {
+        flag = 0;
+        printf("gracefully terminating\n");
     }
 }
