@@ -4,7 +4,11 @@
 #include <unistd.h>
 #include <semaphore.h>
 #include <pthread.h>
+#include <time.h>
+#include <string.h>
+
 #include "printQueue.h"
+
 #define QUEUESIZE 15
 
 int flag;
@@ -27,37 +31,60 @@ int main(int argc, char* argv[])
     pthread_t producerThreads[producerThreadCount];
     pthread_t consumerThreads[consumerThreadCount];
     int i;
+
     for (i = 0; i < producerThreadCount; i++) {
-        pthread_create(&producerThreads[i], NULL, userThreadFunc, NULL);
+        pthread_create(&producerThreads[i], NULL, userThreadFunc, (void*)i);
     }
+
     for (i = 0; i < consumerThreadCount; i++) {
-        pthread_create(&consumerThreads[i], NULL, printThreadFunc, NULL);
+        pthread_create(&consumerThreads[i], NULL, printThreadFunc, (void*)i);
     }
+
     while (flag) {
         sleep(1);
     }
-
+    printf("Ending the threads");
     // Ending those threads
     for (i = 0; i < producerThreadCount; i++) {
         pthread_join(producerThreads[i], NULL);
-        printf("ending producer thread %i\n", i);
+        //printf("ending producer thread %i\n", i);
     }
+
     for (i = 0; i < consumerThreadCount; i++) {
         pthread_join(consumerThreads[i], NULL);
-        printf("ending consumer thread %i\n", i);
+        //printf("ending consumer thread %i\n", i);
     }
 
     return 0;
 }
 
-int userThreadFunc()
+// Thanks stackoverflow... Not plaigarizing just using something I don't want to rewrite myself
+// because thread safety is a pain for getting random numbers.
+// https://stackoverflow.com/a/36631869/5472958
+size_t random_between_range(size_t min, size_t max)
 {
-    return 1;
+    unsigned short state[3];
+    unsigned int seed = time(NULL) + (unsigned int)pthread_self();
+    memcpy(state, &seed, sizeof(seed));
+    return min + nrand48(state) % (max - min);
 }
 
-int printThreadFunc()
+void* userThreadFunc(int threadId)
 {
-    return 1;
+    int numJobs = random_between_range(1, 20);
+    printf("thread %i will be submitting %i jobs\n", threadId, numJobs);
+
+    int j;
+    for (j = 0; j < numJobs; j++) {
+        addJob(random_between_range(100, 1000), threadId);
+    }
+}
+
+void* printThreadFunc(int threadId)
+{
+    while (flag) {
+        sleep(1);
+    }
 }
 
 void signal_handler(int signo)
@@ -66,4 +93,8 @@ void signal_handler(int signo)
         flag = 0;
         printf("gracefully terminating\n");
     }
+}
+
+void addJob(int size, int threadId)
+{
 }

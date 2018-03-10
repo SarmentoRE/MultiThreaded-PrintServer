@@ -6,6 +6,10 @@ struct printRequest {
 
 void signal_handler(int signo);
 
-int printThreadFunc();
+void* printThreadFunc();
 
-int userThreadFunc();
+void* userThreadFunc();
+
+void addJob(int size, int threadNum);
+
+void removeJob(int index);
