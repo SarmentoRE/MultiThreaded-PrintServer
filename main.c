@@ -2,10 +2,13 @@
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
+#include <semaphore.h>
+#include <pthread.h>
 #include "printQueue.h"
+#define QUEUESIZE 15
 
-#define queueSize = 15;
 int flag;
+struct printRequest queue[QUEUESIZE];
 
 int main(int argc, char* argv[])
 {
@@ -15,14 +18,33 @@ int main(int argc, char* argv[])
         printf("Please enter threadCounts\n");
         return -5;
     }
-    int producerThreads = atoi(argv[1]);
-    int consumerThreads = atoi(argv[2]);
+    int producerThreadCount = atoi(argv[1]);
+    int consumerThreadCount = atoi(argv[2]);
 
-    printf("num producers:\t%i\n", producerThreads);
-    printf("num consumers:\t%i\n", consumerThreads);
+    printf("num producers:\t%i\n", producerThreadCount);
+    printf("num consumers:\t%i\n", consumerThreadCount);
 
+    pthread_t producerThreads[producerThreadCount];
+    pthread_t consumerThreads[consumerThreadCount];
+    int i;
+    for (i = 0; i < producerThreadCount; i++) {
+        pthread_create(&producerThreads[i], NULL, userThreadFunc, NULL);
+    }
+    for (i = 0; i < consumerThreadCount; i++) {
+        pthread_create(&consumerThreads[i], NULL, printThreadFunc, NULL);
+    }
     while (flag) {
         sleep(1);
+    }
+
+    // Ending those threads
+    for (i = 0; i < producerThreadCount; i++) {
+        pthread_join(producerThreads[i], NULL);
+        printf("ending producer thread %i\n", i);
+    }
+    for (i = 0; i < consumerThreadCount; i++) {
+        pthread_join(consumerThreads[i], NULL);
+        printf("ending consumer thread %i\n", i);
     }
 
     return 0;

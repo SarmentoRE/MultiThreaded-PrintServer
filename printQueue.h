@@ -1,8 +1,8 @@
 
-struct print_request {
+struct printRequest {
     int size;
     int userId;
-} printRequest;
+};
 
 void signal_handler(int signo);
 
