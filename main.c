@@ -73,6 +73,11 @@ int main(int argc, char* argv[])
         pthread_join(consumerThreads[i], NULL);
         //printf("ending consumer thread %i\n", i);
     }
+
+    sem_destroy(&queueLock);
+    sem_destroy(&readSem);
+    sem_destroy(&writeSem);
+
     printf("# jobs added:\t %i\n # jobs removed:\t %i\n", numJobsAdded, numJobsRemoved);
     printf("size jobs added:\t %i\n size jobs removed:\t %i\n", sizeJobsAdded, sizeJobsRemoved);
     return 0;
@@ -132,11 +137,7 @@ void addJob(int jobSize, int threadId)
     }
     /* printf("\t\tadding job old size is %i,\t\t new size it %i\n", size, size++); */
     sem_post(&queueLock);
-    int val;
-    sem_getvalue(&readSem, &val);
-    if ((val > 0)) {
-        sem_post(&readSem);
-    }
+    sem_post(&readSem);
     numJobsAdded++;
     sizeJobsAdded += jobSize;
     sleep(2.5);
@@ -172,11 +173,8 @@ void removeJob(int index, int threadId)
         //printf("size: %i so we're opening reading\n", size);
         sem_post(&readSem);
     }
-    int val;
-    sem_getvalue(&writeSem, &val);
-    if ((val > 0)) {
-        sem_post(&writeSem);
-    }
+
+    sem_post(&writeSem);
     sem_post(&queueLock);
     numJobsRemoved++;
 }
