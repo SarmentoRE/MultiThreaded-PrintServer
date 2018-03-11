@@ -19,6 +19,9 @@ sem_t queueLock;
 sem_t readSem;
 sem_t writeSem;
 
+// circular buffer vars
+int size, start, end;
+
 int main(int argc, char* argv[])
 {
     producersDone = 0;
@@ -35,6 +38,10 @@ int main(int argc, char* argv[])
 
     pthread_t producerThreads[producerThreadCount];
     pthread_t consumerThreads[consumerThreadCount];
+
+    sem_init(&queueLock, 0, 1);
+    sem_init(&readSem, 0, 0);
+    sem_init(&writeSem, 0, 1);
 
     int i;
     for (i = 0; i < producerThreadCount; i++) {
@@ -85,7 +92,6 @@ void* userThreadFunc(int threadId)
     printf("thread %i will be submitting %i jobs\n", threadId, numJobs);
 
     int j;
-    struct printRequest job;
     for (j = 0; j < numJobs; j++) {
         addJob(random_between_range(100, 1000), threadId);
     }
@@ -110,6 +116,7 @@ void signal_handler(int signo)
 void addJob(int size, int threadId)
 {
     printf("adding job of size %i for thread %i\n", size, threadId);
+    struct printRequest job;
 }
 
 void removeJob(int index)
