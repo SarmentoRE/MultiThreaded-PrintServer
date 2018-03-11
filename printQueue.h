@@ -13,3 +13,7 @@ void* userThreadFunc();
 void addJob(int size, int threadNum);
 
 void removeJob(int index);
+
+void sortQueue();
+
+int queueEmpty();

@@ -14,19 +14,24 @@
 int flag;
 struct printRequest queue[QUEUESIZE];
 
+sem_t queueLock;
+sem_t readSem;
+sem_t writeSem;
+int producersDone;
+
 int main(int argc, char* argv[])
 {
+    producersDone = 0;
     flag = 1;
     signal(SIGINT, signal_handler);
     if (argc < 3) {
         printf("Please enter threadCounts\n");
         return -5;
     }
+
     int producerThreadCount = atoi(argv[1]);
     int consumerThreadCount = atoi(argv[2]);
-
-    printf("num producers:\t%i\n", producerThreadCount);
-    printf("num consumers:\t%i\n", consumerThreadCount);
+    printf("starting %i producers and %i consumers\n", producerThreadCount, consumerThreadCount);
 
     pthread_t producerThreads[producerThreadCount];
     pthread_t consumerThreads[consumerThreadCount];
@@ -40,15 +45,19 @@ int main(int argc, char* argv[])
         pthread_create(&consumerThreads[i], NULL, printThreadFunc, (void*)i);
     }
 
-    while (flag) {
-        sleep(1);
-    }
-    printf("Ending the threads");
-    // Ending those threads
     for (i = 0; i < producerThreadCount; i++) {
         pthread_join(producerThreads[i], NULL);
-        //printf("ending producer thread %i\n", i);
+        printf("ending producer thread %i\n", i);
     }
+
+    producersDone = 1;
+
+    while (flag && (!queueEmpty())) {
+        sleep(1);
+    }
+
+    printf("Ending the threads");
+    // Ending those threads
 
     for (i = 0; i < consumerThreadCount; i++) {
         pthread_join(consumerThreads[i], NULL);
@@ -82,8 +91,9 @@ void* userThreadFunc(int threadId)
 
 void* printThreadFunc(int threadId)
 {
-    while (flag) {
-        sleep(1);
+    while (flag && (!producersDone && !(queueEmpty()))) {
+        sleep(5);
+        printf("flag:\t%i producersDone:\t%i queueEmpty():\t%i\n", flag, producersDone, queueEmpty());
     }
 }
 
@@ -97,4 +107,13 @@ void signal_handler(int signo)
 
 void addJob(int size, int threadId)
 {
+}
+
+void removeJob(int index)
+{
+}
+
+int queueEmpty()
+{
+    return 1;
 }
