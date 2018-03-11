@@ -12,12 +12,12 @@
 #define QUEUESIZE 15
 
 int flag;
+int producersDone;
 struct printRequest queue[QUEUESIZE];
 
 sem_t queueLock;
 sem_t readSem;
 sem_t writeSem;
-int producersDone;
 
 int main(int argc, char* argv[])
 {
@@ -35,8 +35,8 @@ int main(int argc, char* argv[])
 
     pthread_t producerThreads[producerThreadCount];
     pthread_t consumerThreads[consumerThreadCount];
-    int i;
 
+    int i;
     for (i = 0; i < producerThreadCount; i++) {
         pthread_create(&producerThreads[i], NULL, userThreadFunc, (void*)i);
     }
@@ -45,6 +45,7 @@ int main(int argc, char* argv[])
         pthread_create(&consumerThreads[i], NULL, printThreadFunc, (void*)i);
     }
 
+    // do it in this order so that we can end the program once the producers are done and the queue is empty
     for (i = 0; i < producerThreadCount; i++) {
         pthread_join(producerThreads[i], NULL);
         printf("ending producer thread %i\n", i);
@@ -56,7 +57,7 @@ int main(int argc, char* argv[])
         sleep(1);
     }
 
-    printf("Ending the threads");
+    printf("Ending the threads\n");
     // Ending those threads
 
     for (i = 0; i < consumerThreadCount; i++) {
@@ -84,6 +85,7 @@ void* userThreadFunc(int threadId)
     printf("thread %i will be submitting %i jobs\n", threadId, numJobs);
 
     int j;
+    struct printRequest job;
     for (j = 0; j < numJobs; j++) {
         addJob(random_between_range(100, 1000), threadId);
     }
@@ -107,6 +109,7 @@ void signal_handler(int signo)
 
 void addJob(int size, int threadId)
 {
+    printf("adding job of size %i for thread %i\n", size, threadId);
 }
 
 void removeJob(int index)
