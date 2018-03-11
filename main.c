@@ -19,8 +19,10 @@ sem_t queueLock;
 sem_t readSem;
 sem_t writeSem;
 
+int numJobsAdded = 0, numJobsRemoved = 0;
+int sizeJobsAdded = 0, sizeJobsRemoved = 0;
 // circular buffer vars
-int size, start, end;
+int size = 0, start = 0, end = 0;
 
 int main(int argc, char* argv[])
 {
@@ -44,12 +46,12 @@ int main(int argc, char* argv[])
     sem_init(&writeSem, 0, 1);
 
     int i;
-    for (i = 0; i < producerThreadCount; i++) {
-        pthread_create(&producerThreads[i], NULL, userThreadFunc, (void*)i);
-    }
-
     for (i = 0; i < consumerThreadCount; i++) {
         pthread_create(&consumerThreads[i], NULL, printThreadFunc, (void*)i);
+    }
+
+    for (i = 0; i < producerThreadCount; i++) {
+        pthread_create(&producerThreads[i], NULL, userThreadFunc, (void*)i);
     }
 
     // do it in this order so that we can end the program once the producers are done and the queue is empty
@@ -71,7 +73,8 @@ int main(int argc, char* argv[])
         pthread_join(consumerThreads[i], NULL);
         //printf("ending consumer thread %i\n", i);
     }
-
+    printf("# jobs added:\t %i\n # jobs removed:\t %i\n", numJobsAdded, numJobsRemoved);
+    printf("size jobs added:\t %i\n size jobs removed:\t %i\n", sizeJobsAdded, sizeJobsRemoved);
     return 0;
 }
 
@@ -86,6 +89,14 @@ size_t random_between_range(size_t min, size_t max)
     return min + nrand48(state) % (max - min);
 }
 
+void signal_handler(int signo)
+{
+    if (signo == SIGINT) {
+        flag = 0;
+        printf("gracefully terminating\n");
+    }
+}
+
 void* userThreadFunc(int threadId)
 {
     int numJobs = random_between_range(1, 20);
@@ -97,33 +108,80 @@ void* userThreadFunc(int threadId)
     }
 }
 
+void addJob(int jobSize, int threadId)
+{
+    struct printRequest job;
+    job.userId = threadId;
+    job.size = jobSize;
+
+    sem_wait(&writeSem);
+    printf("user thread %i got the writeSem\n", threadId);
+    sem_wait(&queueLock);
+    printf("print thread %i got the  queueLock\n", threadId);
+
+    printf("adding job of size %i for thread %i\n", jobSize, threadId);
+
+    queue[end] = job;
+    end++;
+    end %= 15;
+    size++;
+    if (size < 15) {
+        /* if (start != end) { */
+        //printf("size: %i so we're opening writing\n", size);
+        sem_post(&writeSem);
+    }
+    /* printf("\t\tadding job old size is %i,\t\t new size it %i\n", size, size++); */
+    sem_post(&queueLock);
+    int val;
+    sem_getvalue(&readSem, &val);
+    if ((val > 0)) {
+        sem_post(&readSem);
+    }
+    numJobsAdded++;
+    sizeJobsAdded += jobSize;
+    sleep(2.5);
+}
+
 void* printThreadFunc(int threadId)
 {
-    while (flag && (!producersDone && !(queueEmpty()))) {
-        sleep(5);
+    printf("before loop flag:\t%i producersDone:\t%i queueEmpty():\t%i \t %i\n", flag, !producersDone, !queueEmpty(), !(producersDone && queueEmpty()));
+    while (flag && !(producersDone && queueEmpty())) {
+        sleep(2);
         printf("flag:\t%i producersDone:\t%i queueEmpty():\t%i\n", flag, producersDone, queueEmpty());
+        removeJob(start, threadId);
     }
 }
 
-void signal_handler(int signo)
+void removeJob(int index, int threadId)
 {
-    if (signo == SIGINT) {
-        flag = 0;
-        printf("gracefully terminating\n");
+    sem_wait(&readSem);
+    printf("print thread %i got the readSem\n", threadId);
+    sem_wait(&queueLock);
+    printf("print thread %i got the  queueLock\n", threadId);
+
+    printf("removing job from queue at position: %i\n", start);
+    start++;
+    start %= 15;
+    printf("\t\tremoving job old size is %i", size);
+    size--;
+    printf("\t\tnew size is %i\n", size);
+    struct printRequest job = queue[index];
+    sizeJobsRemoved += job.size;
+    memset(&queue[index], 0, sizeof(job));
+    if (size > 0) {
+        //printf("size: %i so we're opening reading\n", size);
+        sem_post(&readSem);
     }
-}
-
-void addJob(int size, int threadId)
-{
-    printf("adding job of size %i for thread %i\n", size, threadId);
-    struct printRequest job;
-}
-
-void removeJob(int index)
-{
+    int val;
+    sem_getvalue(&writeSem, &val);
+    if ((val > 0)) {
+        sem_post(&writeSem);
+    }
+    sem_post(&queueLock);
+    numJobsRemoved++;
 }
 
 int queueEmpty()
 {
-    return 1;
+    return ((size <= 0) || start == end);
 }
