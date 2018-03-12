@@ -68,9 +68,13 @@ int main(int argc, char* argv[])
 
     printf("Ending the threads\n");
     // Ending those threads
-
+    int j;
     for (i = 0; i < consumerThreadCount; i++) {
+        for (j = 0; j < QUEUESIZE; j++) {
+            sem_post(&readSem);
+        }
         pthread_join(consumerThreads[i], NULL);
+
         //printf("ending consumer thread %i\n", i);
     }
 
@@ -78,7 +82,7 @@ int main(int argc, char* argv[])
     sem_destroy(&readSem);
     sem_destroy(&writeSem);
 
-    printf("# jobs added:\t %i\n # jobs removed:\t %i\n", numJobsAdded, numJobsRemoved);
+    printf("# jobs added:\t %i\n # jobs removed:\t %i\n", numJobsAdded, numJobsRemoved - abs(size));
     printf("size jobs added:\t %i\n size jobs removed:\t %i\n", sizeJobsAdded, sizeJobsRemoved);
     return 0;
 }
@@ -158,8 +162,8 @@ void removeJob(int index, int threadId)
     int val;
     sem_getvalue(&readSem, &val);
     printf("thread %i READSEM val:\t%i\n", threadId, val);
-    if (producersDone == 0) {
-        sem_wait(&readSem);
+    sem_wait(&readSem);
+    if (producersDone == 0 || !(queueEmpty())) {
         /* printf("print thread %i got the readSem\n", threadId); */
         sem_wait(&queueLock);
         /* printf("print thread %i got the  queueLock\n", threadId); */
