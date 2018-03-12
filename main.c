@@ -130,7 +130,7 @@ void addJob(int jobSize, int threadId)
     end++;
     end %= 15;
     size++;
-    if (size < 15) {
+    if (abs(end - start) < 15) {
         /* if (start != end) { */
         //printf("size: %i so we're opening writing\n", size);
         sem_post(&writeSem);

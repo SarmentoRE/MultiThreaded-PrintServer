@@ -10,4 +10,4 @@ clean:
 	rm -f *.o
 
 run: main.o
-	./main.o 10 12 | tee log.txt
+	stdbuf -i0 -o0 -e0 ./main.o 10 12 | tee log.txt
